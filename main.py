@@ -2,6 +2,7 @@ from scrapy.cmdline import execute
 
 from service.scheduleService import ScheduleService
 from util.argparseUtil import ArgparseUtil
+import redis
 
 if __name__ == "__main__":
     arg = ArgparseUtil.invoke()
