@@ -1,1 +1,4 @@
 /venv/
+RunInDocker.bat
+RunInWindows.bat
+RunInLinux.sh

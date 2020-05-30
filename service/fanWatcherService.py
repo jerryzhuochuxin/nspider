@@ -11,13 +11,36 @@ class FansWatcherService:
 
     @classmethod
     def watchBigAuthor(cls):
-        author_filter = {'data': {'$exists': True}, 'cFans': {'$gt': 10000}}
-        cls.__judgeAuthor(author_filter)
+        a = cls.__authorCollection.aggregate([
+            {
+                '$match': {'data': {'$exists': True}, 'cFans': {'$gt': 10000}}
+            }, {
+                '$project': {
+                    "mid": 1,
+                    "face": 1,
+                    "name": 1,
+                    "data": {
+                        "$filter": {
+                            "input":
+                                "$data",
+                            "as": "data",
+                            "cond": {"$gt": ["$$data.datetime", datetime.datetime.now() - datetime.timedelta(32)]}
+                        }
+                    }
+                }
+            }, {
+                "$match": {
+                    "data.0": {
+                        "$exists": True
+                    }
+                }
+            }
+        ])
+        for each_author in a:
+            cls.__judge(each_author)
 
     @classmethod
     def __insertEvent(cls, delta_rate, d_daily, author, info, date):
-        print('变化率：{}% \n单日涨幅：{} \nUP主：{} \n信息：{}\n日期：{}\n\n'.format(
-            delta_rate, d_daily, author['name'], info, date))
         out_data = {
             'variation': int(d_daily),
             'mid': author['mid'],
@@ -32,7 +55,6 @@ class FansWatcherService:
         temp_video = {}
         cause = {'type': 'video'}
         for each_v in videos:
-            # 相差一日之内
             if type(each_v['datetime']) == str:
                 pass
             elif (date - each_v['datetime']).days >= -1 and (date - each_v['datetime']).days <= 7:
@@ -83,15 +105,13 @@ class FansWatcherService:
         # 线性插值
         interrupted_fans = interp1d(x, y, kind='linear')
         temp_date = datetime.datetime.fromtimestamp(start_date)
-        c_date = datetime.datetime(
-            temp_date.year, temp_date.month, temp_date.day).timestamp() + 86400 * 3
+        c_date = datetime.datetime(temp_date.year, temp_date.month, temp_date.day).timestamp() + 86400 * 3
         if c_date - 86400 * 2 <= start_date:
             return
         while (c_date <= end_date):
             date = datetime.datetime.fromtimestamp(c_date)
             daily_array = interrupted_fans([c_date - 86400, c_date])
-            p_daily_array = interrupted_fans(
-                [c_date - 86400 * 2, c_date - 86400])
+            p_daily_array = interrupted_fans([c_date - 86400 * 2, c_date - 86400])
 
             # 24小时前涨粉数
             pd_daily = p_daily_array[1] - p_daily_array[0]
@@ -100,94 +120,36 @@ class FansWatcherService:
             d_daily = daily_array[1] - daily_array[0]
 
             if (d_daily >= 5000 or d_daily <= -2000):
-
                 delta_rate = round(d_daily / pd_daily * 100, 2)
                 if (d_daily >= daily_array[1] * 0.50):
-                    cls.__insertEvent(round(d_daily / daily_array[1] * 100, 2), d_daily,
-                                      author, '新星爆发', date)
-
+                    cls.__insertEvent(round(d_daily / daily_array[1] * 100, 2), d_daily, author, '新星爆发', date)
                 if (d_daily <= 0 and pd_daily >= 0):
-                    cls.__insertEvent('-', d_daily,
-                                      author, '急转直下', date)
+                    cls.__insertEvent('-', d_daily, author, '急转直下', date)
                     c_date += 86400
                     continue
-
                 if (d_daily <= -50000):
-                    # 每日掉粉数突破5K
-                    cls.__insertEvent(delta_rate, d_daily,
-                                      author, '末日级掉粉', date)
-                    pass
+                    cls.__insertEvent(delta_rate, d_daily, author, '末日级掉粉', date)
                 elif (d_daily <= -20000):
-                    # 每日掉粉数突破2W
-                    cls.__insertEvent(delta_rate, d_daily,
-                                      author, '雪崩级掉粉', date)
-                    pass
+                    cls.__insertEvent(delta_rate, d_daily, author, '雪崩级掉粉', date)
                 elif (d_daily <= -5000):
-                    # 每日掉粉数突破5W
-                    cls.__insertEvent(delta_rate, d_daily,
-                                      author, '大量掉粉', date)
-                    pass
+                    cls.__insertEvent(delta_rate, d_daily, author, '大量掉粉', date)
 
-                if (c_date >= start_date + 86400 * 8 and d_daily > 0):
-                    weekly_array = interrupted_fans([
-                        c_date - 86400 * 8, c_date - 86400])
-                    # 上月平均涨粉数
+                if (c_date >= start_date * 86400 * 8 and d_daily > 0):
+                    weekly_array = interrupted_fans([c_date - 86400 * 8, c_date - 86400])
                     weekly_mean = (weekly_array[1] - weekly_array[0]) / 7
                     # 上周平均涨粉数
                     delta_rate = round(d_daily / weekly_mean * 100, 2)
                     if delta_rate >= 10000 or d_daily >= 200000:
                         # 日涨粉数超过上日的100倍
-                        cls.__insertEvent(delta_rate, d_daily,
-                                          author, '传说级涨粉', date)
-                        pass
+                        cls.__insertEvent(delta_rate, d_daily, author, '传说级涨粉', date)
                     elif delta_rate >= 5000 or d_daily >= 100000:
                         # 日涨粉数超过上日的50倍
-                        cls.__insertEvent(delta_rate, d_daily,
-                                          author, '史诗级涨粉', date)
-                        pass
+                        cls.__insertEvent(delta_rate, d_daily, author, '史诗级涨粉', date)
                     elif delta_rate >= 2500:
                         # 日涨粉数超过上日的25倍
-                        cls.__insertEvent(delta_rate, d_daily,
-                                          author, '大量涨粉', date)
-                        pass
+                        cls.__insertEvent(delta_rate, d_daily, author, '大量涨粉', date)
 
             c_date += 86400
-            pass
-
-    @classmethod
-    def __judgeAuthor(cls, author_filter):
-        author_cursor = cls.__authorCollection.find(author_filter)
-        count = author_cursor.count()
-        a = cls.__authorCollection.aggregate([
-            {
-                '$match': author_filter
-            }, {
-                '$project': {
-                    "mid": 1,
-                    "face": 1,
-                    "name": 1,
-                    "data": {
-                        "$filter": {
-                            "input":
-                                "$data",
-                            "as": "data",
-                            "cond": {"$gt": ["$$data.datetime", datetime.datetime.now() - datetime.timedelta(32)]}
-                        }
-                    }
-                }
-            }, {
-                "$match": {
-                    "data.0": {
-                        "$exists": True
-                    }
-                }
-            }
-        ])
-        print("待爬取作者数量：{}".format(count))
-        for each_author in a:
-            print(each_author['mid'])
-            cls.__judge(each_author)
-        pass
 
 
 if __name__ == "__main__":
