@@ -5,7 +5,5 @@
 #setx BILIOB_REDIS_CONNECTION_STRING "redis://:123456@localhost:6379"
 #setx BILIOB_MONGO_URL "mongodb://user:123456@localhost:27017/biliob?authMechanism=SCRAM-SHA-256"
 
-setx BILIOB_REDIS_CONNECTION_STRING "redis://:biliobTeam@49.235.22.153:8085"
-setx BILIOB_MONGO_URL "mongodb://biliob:w4cxbbMongodb@101.132.142.135:27017/biliob?authMechanism=SCRAM-SHA-256"
 
 #python main.py -debug=True
