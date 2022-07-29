@@ -26,7 +26,7 @@ redis==3.5.2
 requests==2.23.0
 schedule==0.6.0
 scipy==1.4.1
-Scrapy==2.1.0
+Scrapy==2.6.2
 scrapy-redis==0.6.8
 service-identity==18.1.0
 six==1.15.0
